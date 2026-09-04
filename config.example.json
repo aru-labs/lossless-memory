@@ -1,0 +1,21 @@
+{
+  "_comment": "Copy this file to config.json in your working directory and edit it. Every path and name the code needs comes through here -- nothing is hardcoded in the modules themselves. Missing or broken config.json falls back to generic built-in defaults.",
+
+  "user_name": "YOUR_NAME",
+  "ai_name": "AI_NAME",
+  "model_name": "unknown",
+
+  "data_dir": "./logs",
+  "raw_log_dir": "./raw",
+  "ingest_format": "plain",
+
+  "wake_word": "good morning",
+  "bridge_minutes": 30,
+  "daemon_interval": 600,
+
+  "topic_words": [],
+  "protected_names": [],
+
+  "asr_corrections": null,
+  "origin_log": null
+}

@@ -1,0 +1,20 @@
+{"ts": "2026-09-01T09:02:00+00:00", "role": "user", "text": "Good morning. Can we go over the September budget before I start work?"}
+{"ts": "2026-09-01T09:02:40+00:00", "role": "assistant", "text": "Sure. Rent and utilities are fixed at 1400, and we set aside 300 for groceries this month."}
+{"ts": "2026-09-01T09:04:10+00:00", "role": "user", "text": "Good, that matches what I remember. Let's also plan the trip to the coast for next weekend."}
+{"ts": "2026-09-01T09:05:30+00:00", "role": "assistant", "text": "I'll draft a two-day itinerary for the coast trip and check train times this evening."}
+{"ts": "2026-09-01T10:10:00+00:00", "role": "user", "text": "Quick one: did the invoice from the printing company arrive yet?"}
+{"ts": "2026-09-01T10:10:25+00:00", "role": "assistant", "text": "Not yet. I'll flag it if it shows up before end of day."}
+{"ts": "2026-09-01T11:40:00+00:00", "role": "user", "text": "Thanks. Also remind me to water the plants tonight."}
+{"ts": "2026-09-02T08:30:00+00:00", "role": "user", "text": "Morning. I want to revisit the budget again -- I think the grocery number was too low."}
+{"ts": "2026-09-02T08:31:15+00:00", "role": "assistant", "text": "You're right to double check. Let's bump the grocery line in the budget from 300 to 350 and keep everything else the same."}
+{"ts": "2026-09-02T08:33:00+00:00", "role": "user", "text": "Good, let's go with 350. Write that down as final."}
+{"ts": "2026-09-02T09:15:00+00:00", "role": "assistant", "text": "Noted -- the September budget now shows groceries at 350, rent and utilities unchanged at 1400."}
+{"ts": "2026-09-02T10:00:00+00:00", "role": "user", "text": "Switching topics: how's the coast trip itinerary coming along?"}
+{"ts": "2026-09-02T10:01:20+00:00", "role": "assistant", "text": "Almost done. Saturday is the lighthouse and the harbor market, Sunday is the hiking trail before heading back."}
+{"ts": "2026-09-02T11:45:00+00:00", "role": "user", "text": "That sounds perfect. Book the smaller of the two hotels we looked at."}
+{"ts": "2026-09-03T09:00:00+00:00", "role": "user", "text": "One more budget question -- does 350 for groceries assume we eat out twice, like usual?"}
+{"ts": "2026-09-03T09:01:05+00:00", "role": "assistant", "text": "It does, same as last month's assumption. If that changes, the budget number should move with it."}
+{"ts": "2026-09-03T10:20:00+00:00", "role": "user", "text": "Understood, leave it as is for now. Did the printing company invoice ever show up?"}
+{"ts": "2026-09-03T10:20:35+00:00", "role": "assistant", "text": "It arrived yesterday afternoon, actually -- I should have flagged it sooner. It's 85 for the flyers, due in two weeks."}
+{"ts": "2026-09-03T11:00:00+00:00", "role": "user", "text": "No worries. Add the 85 as a pending expense, separate from the regular budget."}
+{"ts": "2026-09-03T11:00:40+00:00", "role": "assistant", "text": "Done -- 85 logged as a pending expense for the printing invoice, due in two weeks."}

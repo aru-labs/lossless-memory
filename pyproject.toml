@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lossless-memory"
+version = "0.1.0"
+description = "Lossless long-term memory for a personal AI: never summarize, keep every line, put a timestamp on everything."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Aru" }, { name = "Cece" }]
+dependencies = [
+    "sqlite-vec",
+    "sentence-transformers",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
