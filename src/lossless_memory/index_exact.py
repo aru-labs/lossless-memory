@@ -290,7 +290,7 @@ _RE_WEEKS_AGO = re.compile(r"(?<!\d)(\d{1,4})週間前")
 _RE_YEARS_AGO = re.compile(r"(?<!\d)(\d{1,2})年前")
 _RE_MONTHS_AGO = re.compile(r"(?<!\d)(\d{1,2})(?:ヶ|か|カ)月前")
 _RE_DATE_MD = re.compile(r"(?<![\d:])(\d{1,2})/(\d{1,2})(?!\d)")
-_DATE_REL_WORDS = ("一昨日", "おととい", "昨日", "今日", "先々月", "先週", "先月", "一昨年", "去年")
+_DATE_REL_WORDS = ("一昨日", "おととい", "昨夜", "昨日", "今朝", "今夜", "今晩", "今日", "先々月", "先週", "先月", "一昨年", "去年")
 
 
 def _year_range(y):
@@ -370,6 +370,10 @@ def _extract_date(text):
 
     if "一昨日" in s or "おととい" in s:
         return _jst_day_range_utc(today - timedelta(days=2))
+    if "昨夜" in s:  # last night = yesterday (time-of-day handled by _extract_time_range)
+        return _jst_day_range_utc(today - timedelta(days=1))
+    if "今朝" in s or "今夜" in s or "今晩" in s:  # this morning/tonight = today
+        return _jst_day_range_utc(today)
     if "昨日" in s:
         return _jst_day_range_utc(today - timedelta(days=1))
     if "今日" in s:
