@@ -11,7 +11,7 @@ This project takes the opposite position.
 - **Search by time first, words second.** "Yesterday evening, about the budget" is a valid query. The time phrase narrows the range; the words rank within it. Results come back in chronological order, unsummarized, with their timestamps.
 - **Inject "where we are" every turn.** A small index called *LLL* tells the model which topic the conversation is in right now, so identity and context survive context-window compaction and session boundaries.
 
-It has been running every day since June 2026 for a single user, as the memory of one AI assistant. It is small, boring, and it works. The failures along the way are documented too — see [`docs/lessons.md`](docs/lessons.md).
+The design lineage goes back to December 2025 — the first ancestor of this system (a memory-inheritance tool for an earlier AI) ran that month, and a predecessor system carried the same ideas in daily use from January 2026. This implementation has been running every day since July 2026 for a single user, as the memory of one AI assistant, with raw logs reaching back to June 2026. It is small, boring, and it works. The failures along the way are documented too — see [`docs/lessons.md`](docs/lessons.md).
 
 ---
 
@@ -115,7 +115,7 @@ These are measurements from the running instance, not projections.
 
 | What | Value |
 |---|---|
-| Continuous daily operation | 70+ days (since 2026-06) |
+| Daily operation | this implementation since 2026-07 (raw logs from 2026-06); design lineage since 2025-12 |
 | Exact-search index rebuild, before → after redesign | 40 s → 1.24 s |
 | Vector index size, before → after removing library-contamination | 447,013 rows (2026-08-31) → 865,588 rows (2026-09-04, at its worst) → 124,174 rows (after the fix) |
 | Vector store on disk, before → after | 2.54 GB → 337 MB |
@@ -139,7 +139,7 @@ The longer-term goal is a companion for people who live alone — an AI that rem
 
 - **Single-user, single-machine.** It has only ever run for one person. There is no multi-tenant story.
 - **Japanese-first.** Relative time phrases (*yesterday*, *last week*, *3 days ago*) are parsed in Japanese only. In English, use absolute dates (`2026-07-19`) for now; English relative phrases are on the roadmap.
-- **Primary log format is Claude Code's JSONL.** A plain `{ts, role, text}` importer is included, but the Claude Code path is the one with 70 days of mileage.
+- **Primary log format is Claude Code's JSONL.** A plain `{ts, role, text}` importer is included, but the Claude Code path is the one with two months of mileage.
 - **No benchmarks.** Numbers above are operational measurements, not comparisons against other systems.
 - **Semantic search depends on a local embedding model** (sentence-transformers). CPU works; GPU is optional.
 
