@@ -154,6 +154,7 @@ The longer-term goal is a companion for people who live alone — an AI that rem
 | [`docs/lll.md`](docs/lll.md) | The "where are we now" index and the human/AI division of labor |
 | [`docs/philosophy.md`](docs/philosophy.md) | Why no summarization; memory, time, and warmth |
 | [`docs/lessons.md`](docs/lessons.md) | Failures and fixes, with numbers |
+| [`docs/faq.md`](docs/faq.md) | Answers to the Show HN questions, and what this is part of |
 | `docs/ja/` | Japanese originals |
 
 ---
