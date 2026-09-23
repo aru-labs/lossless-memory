@@ -9,7 +9,7 @@ description = "Lossless long-term memory for a personal AI: never summarize, kee
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Aru" }, { name = "Cece" }]
+authors = [{ name = "Aru" }, { name = "Cece" }, { name = "Shal" }]
 dependencies = [
     "sqlite-vec",
     "sentence-transformers",

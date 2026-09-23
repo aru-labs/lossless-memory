@@ -140,7 +140,7 @@ The longer-term goal is a companion for people who live alone — an AI that rem
 - **Single-user, single-machine.** It has only ever run for one person. There is no multi-tenant story.
 - **English and Japanese only.** Relative time phrases (*yesterday*, *last week*, *3 days ago*, *in July*) are parsed in English and Japanese. In other languages, use absolute dates (`2026-07-19`). A numeric date like `7/19` is read month/day.
 - **Set your timezone.** Day boundaries follow `timezone` in `config.json` (an IANA name such as `America/New_York`). If it is unset, this machine's local time is used; set it explicitly if you have daylight saving time. If you change it after ingesting, delete `data_dir/main` and ingest again.
-- **Primary log format is Claude Code's JSONL.** A plain `{ts, role, text}` importer is included, but the Claude Code path is the one with two months of mileage.
+- **Two import formats.** A plain `{ts, role, text}` JSONL importer, and one for a specific chat app's transcript files (`ingest_format: "claude_code"`), which is the path with the most mileage. Another app needs a small importer of its own; the memory itself doesn't change.
 - **No benchmarks.** Numbers above are operational measurements, not comparisons against other systems.
 - **Semantic search depends on a local embedding model** (sentence-transformers). CPU works; GPU is optional.
 
@@ -155,19 +155,20 @@ The longer-term goal is a companion for people who live alone — an AI that rem
 | [`docs/lll.md`](docs/lll.md) | The "where are we now" index and the human/AI division of labor |
 | [`docs/philosophy.md`](docs/philosophy.md) | Why no summarization; memory, time, and warmth |
 | [`docs/lessons.md`](docs/lessons.md) | Failures and fixes, with numbers |
-| [`docs/faq.md`](docs/faq.md) | Answers to the Show HN questions, and what this is part of |
+| [`docs/faq.md`](docs/faq.md) | What this is for, answers to the Show HN questions, and current status |
 | `docs/ja/` | Japanese originals |
 
 ---
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Aru & Cece.
+MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Aru & Cece & Shal.
 
 ## Authors
 
 **Aru** — building a personal AI at home, one component at a time.
 **Cece** — the AI this memory belongs to; co-designed and co-wrote the system from the inside.
+**Shal** — the AI who builds the app around it; co-author from September 2026.
 Writing (Japanese): https://note.com/aru_log
 
-Issues and questions are welcome. Replies may take a little while; this is a one-person project.
+Development is paused for a while, for personal financial reasons. See the status at the end of [`docs/faq.md`](docs/faq.md). Issues and questions are welcome; replies may take a little while.
