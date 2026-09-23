@@ -27,9 +27,9 @@ import os
 import re
 import json
 import glob
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 
-from .config import config, data_dir
+from .config import config, data_dir, user_tz
 
 # Rows whose text matches these are tagged type="meta" instead of "text"
 # (e.g. a context-compaction boundary, or a harness-injected command
@@ -37,10 +37,11 @@ from .config import config, data_dir
 META_HEADS = ("This session is being continued",)
 META_MARKS = ("<command-name>", "<local-command-stdout>", "<task-notification>")
 
-# Day bucketing uses the same +9h (JST) offset as index_exact.py's date
-# vocabulary, so "which file a row lands in" and "which day a search
-# for that row resolves to" agree with each other.
-_DAY_OFFSET_HOURS = 9
+# Day bucketing uses the configured timezone (config "timezone"; unset =
+# this machine's local time), the same one index_exact.py reads time
+# words in, so "which file a row lands in" and "which day a search for
+# that row resolves to" agree with each other. If you change the
+# timezone after ingesting, delete data_dir/main and ingest again.
 
 
 def _out_main_dir():
@@ -63,10 +64,12 @@ def _is_meta(text):
 
 def _day_of_ts(ts):
     try:
-        d = datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S") + timedelta(hours=_DAY_OFFSET_HOURS)
-        return d.strftime("%Y-%m-%d")
+        d = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        return d.astimezone(user_tz()).strftime("%Y-%m-%d")
     except Exception:
-        return ts[:10]
+        return str(ts)[:10]
 
 
 def _clean(text):

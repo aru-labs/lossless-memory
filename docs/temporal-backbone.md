@@ -10,7 +10,7 @@ Concretely, this means the single retrieval entry point accepts queries of the f
 
 ## A vocabulary of time an AI can actually parse
 
-For "time + words" to work as an interface, the system has to recognize a reasonably natural range of ways people actually refer to time, not just ISO dates. The recognized vocabulary includes:
+For "time + words" to work as an interface, the system has to recognize a reasonably natural range of ways people actually refer to time, not just ISO dates. The recognized vocabulary, in English and Japanese, includes:
 
 - Relative days: today, yesterday, the day before yesterday, "N days ago"
 - Relative larger spans: last week, last month, "N months ago" (correctly crossing year boundaries)
@@ -19,6 +19,8 @@ For "time + words" to work as an interface, the system has to recognize a reason
 - Specific clock times and rough times ("around 3pm")
 
 Recognizing a month-only expression ("in July") as a date *range* — rather than falling through to being treated as a plain search keyword — turned out to matter in practice; an earlier version of the parser only recognized full dates and silently treated a bare month name as ordinary search text, so a lot of otherwise-scoped queries were quietly running unscoped. See `docs/lessons.md` for more on this class of failure.
+
+Every one of these is read in the user's timezone (`timezone` in `config.json`, an IANA name such as `America/New_York`; unset means the machine's local time). "Yesterday" is yesterday where the user lives — the stored timestamps stay in UTC, and only the range is computed locally. In English, a month name alone counts as a month only after "in" or "during" ("in July"), so ordinary words like "may" and "march" are never taken for dates.
 
 ## Layered fallback when the time window comes up empty
 

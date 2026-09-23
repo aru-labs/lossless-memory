@@ -55,7 +55,7 @@ The raw logs are the source of truth. Every index below can be deleted and rebui
 Time is not metadata here; it is the primary axis.
 
 - The exact-match index (SQLite FTS5, bigram tokenized for Japanese and English) stores the timestamp alongside every row.
-- The query parser understands time phrases — relative ones such as *yesterday*, *last week*, *3 days ago* (currently Japanese only), and absolute dates such as *2026-07-19* (any language) — and converts them into a range **before** any ranking happens.
+- The query parser understands time phrases — relative ones such as *yesterday*, *last week*, *3 days ago*, *in July*, *this morning* (in English and Japanese), and absolute dates such as *2026-07-19* (any language) — and converts them into a range **before** any ranking happens. "Yesterday" means yesterday in your timezone (`timezone` in `config.json`).
 - If a time phrase is present, results are restricted to that range and returned in chronological order. Semantic search is only used when the exact index returns too little inside the range, and the fallback is reported honestly in the output header.
 
 The practical effect: the AI can answer "what did we decide last Tuesday night?" with the actual lines from last Tuesday night, in order, rather than a paraphrase of something similar from three weeks ago.
@@ -138,7 +138,8 @@ The longer-term goal is a companion for people who live alone — an AI that rem
 ## Limitations (please read)
 
 - **Single-user, single-machine.** It has only ever run for one person. There is no multi-tenant story.
-- **Japanese-first.** Relative time phrases (*yesterday*, *last week*, *3 days ago*) are parsed in Japanese only. In English, use absolute dates (`2026-07-19`) for now; English relative phrases are on the roadmap.
+- **English and Japanese only.** Relative time phrases (*yesterday*, *last week*, *3 days ago*, *in July*) are parsed in English and Japanese. In other languages, use absolute dates (`2026-07-19`). A numeric date like `7/19` is read month/day.
+- **Set your timezone.** Day boundaries follow `timezone` in `config.json` (an IANA name such as `America/New_York`). If it is unset, this machine's local time is used; set it explicitly if you have daylight saving time. If you change it after ingesting, delete `data_dir/main` and ingest again.
 - **Primary log format is Claude Code's JSONL.** A plain `{ts, role, text}` importer is included, but the Claude Code path is the one with two months of mileage.
 - **No benchmarks.** Numbers above are operational measurements, not comparisons against other systems.
 - **Semantic search depends on a local embedding model** (sentence-transformers). CPU works; GPU is optional.

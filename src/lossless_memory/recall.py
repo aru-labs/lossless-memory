@@ -10,9 +10,10 @@ summarized. Don't call index_exact / index_vector separately; call
 this.
 
 The strongest way to query is "date + word(s)": naming a date (an
-explicit YYYY-MM-DD, or one of the Japanese relative words index_exact
-understands) switches to time-scoped mode and returns only what's in
-that range, without mixing in semantic matches from elsewhere.
+explicit YYYY-MM-DD, or a relative phrase in Japanese or English such
+as "yesterday" or "3 days ago") switches to time-scoped mode and
+returns only what's in that range, without mixing in semantic matches
+from elsewhere.
 
 The output always starts with [NOW] -- knowing the current time first
 keeps you from drowning in a wave of search results whose own
@@ -26,7 +27,7 @@ import json
 import glob
 import datetime
 
-from .config import config, data_dir
+from .config import config, data_dir, user_tz
 from . import index_exact
 # index_vector pulls in sentence-transformers, which is heavy and not
 # needed for exact-only use -- imported lazily at each call site below
@@ -108,14 +109,13 @@ def _expand_query(query):
 
 
 def _ts_jst(ts):
-    """Render a stored UTC ts as a JST "YYYY-MM-DD HH:MM" string."""
+    """Render a stored UTC ts as a "YYYY-MM-DD HH:MM" string in the user's timezone."""
     s = str(ts or "")
     try:
         t = datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
         if t.tzinfo is None:
             t = t.replace(tzinfo=datetime.timezone.utc)
-        jst = datetime.timezone(datetime.timedelta(hours=9))
-        return t.astimezone(jst).strftime("%Y-%m-%d %H:%M")
+        return t.astimezone(user_tz()).strftime("%Y-%m-%d %H:%M")
     except Exception:
         return s[:16].replace("T", " ")
 
@@ -523,7 +523,7 @@ def recall(query, limit=6, recency=True, actor=None, around=0, full=False,
     """The manual entry point. Calls fetch() and formats the result
     for display. Returns a list of display lines, [NOW] first."""
     del LAST_MODE[:]
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = datetime.datetime.now(user_tz()).strftime("%Y-%m-%d %H:%M")
     lines = ["[NOW] " + now + " -- anchor on the current time before reading anything below."]
 
     if compact_n:
@@ -665,8 +665,9 @@ def main():
         print('The strongest query is "date + word(s)": naming a date scopes the search to that range only.')
         print('  example: python -m lossless_memory.recall "2026-09-02 budget"')
         print('           python -m lossless_memory.recall "2026-09-02"   <- no words = show the whole day')
-        print("  dates understood: an explicit YYYY-MM-DD / M/D, or the Japanese relative words")
-        print("  (today/yesterday/N days ago/last week/...). English relative dates are not supported yet.")
+        print("  dates understood: an explicit YYYY-MM-DD / M/D, or a relative phrase in Japanese or English")
+        print("  (today, yesterday, 3 days ago, last week, in July, July 19, this morning, around 3pm, ...).")
+        print('  Days follow "timezone" in config.json (an IANA name; unset = this machine\'s local time).')
         print("")
         print("--around[=N]  = also show N rows before/after each hit (default 1, no cap)")
         print("--user        = only rows from the configured user_name")

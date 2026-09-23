@@ -19,7 +19,7 @@ import os
 import json
 import datetime
 
-from .config import data_dir
+from .config import data_dir, user_tz
 
 
 def _out_path():
@@ -45,7 +45,7 @@ def _last_rec():
 
 
 def add(topic):
-    rec = {"ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+    rec = {"ts": datetime.datetime.now(user_tz()).strftime("%Y-%m-%dT%H:%M:%S"),
            "topic": topic.strip()[:40]}
     # Skip a duplicate of the immediately preceding topic, no matter
     # how much time has passed -- switching tabs/sessions back and
@@ -67,7 +67,7 @@ def done(word):
     stays exactly as recorded, and this appends "this word marks a
     settled topic" to a separate log. state_index.py cross-references
     the two to show a checkmark."""
-    rec = {"ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+    rec = {"ts": datetime.datetime.now(user_tz()).strftime("%Y-%m-%dT%H:%M:%S"),
            "match": word.strip()[:40]}
     path = _done_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)

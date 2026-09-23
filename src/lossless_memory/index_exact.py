@@ -23,16 +23,18 @@ Japanese support:
   bigram-split the same way before matching.
 
 Date / time-of-day vocabulary:
-  The date and time-of-day words this module understands ("today",
-  "yesterday", "last week", "at night", ...) are Japanese, since that
-  is the vocabulary this project was built and tested against.
-  Explicit ISO dates (YYYY-MM-DD) and bare M/D dates are language
-  neutral and always work. See the project README for the exact
-  limitation.
+  Relative date and time-of-day words are understood in Japanese and
+  English ("today" / "yesterday" / "3 days ago" / "last week" /
+  "in July" / "July 19" / "this morning" / "around 3pm", and their
+  Japanese counterparts). Explicit ISO dates (YYYY-MM-DD) and bare
+  M/D dates are language neutral and always work.
 
-  Row timestamps are stored as UTC ISO8601. The date/time-of-day words
-  a user speaks are interpreted in JST (UTC+9) and converted before
-  comparison, so "today" means "today in Japan time", not UTC.
+  Row timestamps are stored as UTC ISO8601. The words a user speaks
+  are interpreted in the configured timezone (config "timezone", an
+  IANA name; unset = this machine's local time) and converted before
+  comparison, so "today" means today where the user lives, not UTC.
+  Helper names below still say "jst" for historical reasons; they all
+  use that configured timezone.
 """
 import os
 import re
@@ -47,13 +49,23 @@ try:
 except Exception:
     _qr = None
 
-from .config import data_dir
+from .config import data_dir, user_tz
 
 _LOG_MAIN = None  # resolved lazily so tests can point data_dir() elsewhere
 _CORE_FIELDS = ("ts", "actor", "role", "type", "text", "model", "session")
 
 _UTC = timezone.utc
-_JST = timezone(timedelta(hours=9))
+
+
+def _tz():
+    """The user's timezone (config "timezone"; unset = local time)."""
+    return user_tz()
+
+
+def _today():
+    """Today's date in the user's timezone. Kept as its own function so
+    tests can pin "now"."""
+    return datetime.now(_tz()).date()
 
 
 def _log_main():
@@ -123,6 +135,24 @@ _STOPWORDS = {
     "参照", "インスタンス", "形式", "テスト",
 }
 
+# English stopwords, checked per token only (never substring-replaced
+# like the Japanese list above, so "do" can't eat into "document").
+_EN_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "so", "of", "to", "in", "on",
+    "at", "for", "with", "from", "by", "about", "around", "into", "over",
+    "i", "me", "my", "we", "us", "our", "you", "your", "he", "she", "it",
+    "its", "they", "them", "their", "this", "that", "these", "those",
+    "is", "am", "are", "was", "were", "be", "been", "do", "does", "did",
+    "have", "has", "had", "will", "would", "can", "could", "should",
+    "what", "when", "where", "which", "who", "how", "why",
+    "remember", "recall", "said", "say", "says", "told", "tell", "talk",
+    "talked", "talking", "mention", "mentioned", "discuss", "discussed",
+    "please", "just", "again", "then", "first", "previously", "ago", "last",
+    "time", "thing", "things", "stuff",
+    "yesterday", "today", "tonight", "morning", "afternoon", "evening", "night",
+    "day", "days", "week", "weeks", "month", "months", "year", "years",
+}
+
 
 def _filters():
     """Return (fillers, tail_fillers, stopwords), from query_rules if
@@ -186,7 +216,7 @@ def _extract_keywords(text):
             continue
         if len(kw) == 2 and "一" <= kw[0] <= "鿿" and kw[1] in _particles:
             continue
-        if kw in stopwords or kw.lower() in _stop_lower:
+        if kw in stopwords or kw.lower() in _stop_lower or kw.lower() in _EN_STOPWORDS:
             continue
         if kw in seen:
             continue
@@ -259,7 +289,7 @@ def _keyword_and_query(keywords):
 # ============================================================
 # Temporal ruler: turns a spoken date/time-of-day into a UTC range
 # comparable against the stored ts. Row ts is UTC; the words a user
-# speaks ("today", "3 days ago", "at night") are JST.
+# speaks ("today", "3 days ago", "at night") are in the user's timezone.
 # ============================================================
 def _parse_ts(ts_str):
     """Parse a stored ts string into an aware UTC datetime, or None."""
@@ -275,10 +305,10 @@ def _parse_ts(ts_str):
 
 
 def _jst_day_range_utc(d):
-    """The [00:00, 23:59:59.999999] window of JST date d, as a (start,
+    """The [00:00, 23:59:59.999999] window of date d in the user's timezone, as a (start,
     end) pair of aware UTC datetimes."""
-    start_jst = datetime.combine(d, _time(0, 0, 0, 0), tzinfo=_JST)
-    end_jst = datetime.combine(d, _time(23, 59, 59, 999999), tzinfo=_JST)
+    start_jst = datetime.combine(d, _time(0, 0, 0, 0), tzinfo=_tz())
+    end_jst = datetime.combine(d, _time(23, 59, 59, 999999), tzinfo=_tz())
     return (start_jst.astimezone(_UTC), end_jst.astimezone(_UTC))
 
 
@@ -298,16 +328,132 @@ def _year_range(y):
             _jst_day_range_utc(datetime(y, 12, 31).date())[1])
 
 
+# ============================================================
+# English time words. Same meanings as the Japanese rules above
+# (whole words only, case-insensitive). A month name alone is read as
+# a month only after "in"/"during" ("in July"), so the ordinary words
+# "may" and "march" are never mistaken for dates.
+# ============================================================
+_EN_NUMBERS = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4,
+               "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+               "ten": 10, "eleven": 11, "twelve": 12}
+_EN_NUM_RX = r"(\d{1,4}|an|a|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
+_EN_MONTHS = {"january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
+              "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
+              "august": 8, "aug": 8, "september": 9, "sept": 9, "sep": 9,
+              "october": 10, "oct": 10, "november": 11, "nov": 11,
+              "december": 12, "dec": 12}
+_EN_MONTH_RX = (r"(january|february|march|april|may|june|july|august|september|"
+                r"october|november|december|jan|feb|mar|apr|jun|jul|aug|sept|sep|"
+                r"oct|nov|dec)\.?")
+_RE_EN_MD = re.compile(r"\b" + _EN_MONTH_RX + r"\s+(\d{1,2})(?:st|nd|rd|th)?\b", re.I)
+_RE_EN_DM = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?" + _EN_MONTH_RX + r"(?![a-z])", re.I)
+_RE_EN_MONTH_ONLY = re.compile(r"\b(?:in|during)\s+" + _EN_MONTH_RX + r"(?![a-z])", re.I)
+_RE_EN_AGO = re.compile(r"\b" + _EN_NUM_RX + r"\s+(day|week|month|year)s?\s+ago\b", re.I)
+_EN_REL = (
+    (re.compile(r"\b(?:the\s+)?day\s+before\s+yesterday\b", re.I), "day-2"),
+    (re.compile(r"\byesterday(?:['’]s)?\b", re.I), "day-1"),
+    (re.compile(r"\blast\s+night\b", re.I), "day-1"),
+    (re.compile(r"\b(?:today(?:['’]s)?|tonight|this\s+(?:morning|afternoon|evening))\b", re.I), "day0"),
+    (re.compile(r"\blast\s+week\b", re.I), "week-1"),
+    (re.compile(r"\b(?:the\s+)?month\s+before\s+last\b", re.I), "month-2"),
+    (re.compile(r"\blast\s+month\b", re.I), "month-1"),
+    (re.compile(r"\b(?:the\s+)?year\s+before\s+last\b", re.I), "year-2"),
+    (re.compile(r"\blast\s+year\b", re.I), "year-1"),
+)
+
+
+def _month_range(y, mo):
+    """The whole calendar month mo of year y, as a UTC (start, end) pair."""
+    first = datetime(y, mo, 1).date()
+    nxt = datetime(y + 1, 1, 1).date() if mo == 12 else datetime(y, mo + 1, 1).date()
+    return (_jst_day_range_utc(first)[0], _jst_day_range_utc(nxt - timedelta(days=1))[1])
+
+
+def _months_back(today, n):
+    """The calendar month n months before today's month."""
+    y, mo = today.year, today.month - n
+    while mo <= 0:
+        mo += 12
+        y -= 1
+    return _month_range(y, mo)
+
+
+def _extract_date_en(s, today):
+    """The English half of _extract_date: returns a UTC (start, end)
+    pair, or None. Meanings match the Japanese rules: a named day is
+    that whole day, "N weeks ago" is that day +-3 days, "N months ago"
+    / "last month" is that calendar month, "last year" is that
+    calendar year, "last week" is the 7 days before today."""
+    try:
+        m = _RE_EN_MD.search(s)
+        if m:
+            try:
+                return _jst_day_range_utc(datetime(today.year, _EN_MONTHS[m.group(1).lower()],
+                                                   int(m.group(2))).date())
+            except ValueError:
+                pass
+        m = _RE_EN_DM.search(s)
+        if m:
+            try:
+                return _jst_day_range_utc(datetime(today.year, _EN_MONTHS[m.group(2).lower()],
+                                                   int(m.group(1))).date())
+            except ValueError:
+                pass
+        m = _RE_EN_MONTH_ONLY.search(s)
+        if m:
+            mo = _EN_MONTHS[m.group(1).lower()]
+            y = today.year if mo <= today.month else today.year - 1
+            return _month_range(y, mo)
+        m = _RE_EN_AGO.search(s)
+        if m:
+            tok = m.group(1).lower()
+            n = int(tok) if tok.isdigit() else _EN_NUMBERS[tok]
+            unit = m.group(2).lower()
+            if unit == "day":
+                return _jst_day_range_utc(today - timedelta(days=n))
+            if unit == "week":
+                base = today - timedelta(weeks=n)
+                return (_jst_day_range_utc(base - timedelta(days=3))[0],
+                        _jst_day_range_utc(base + timedelta(days=3))[1])
+            if unit == "month":
+                return _months_back(today, n)
+            return _year_range(today.year - n)
+        for rx, key in _EN_REL:
+            if not rx.search(s):
+                continue
+            if key == "day-2":
+                return _jst_day_range_utc(today - timedelta(days=2))
+            if key == "day-1":
+                return _jst_day_range_utc(today - timedelta(days=1))
+            if key == "day0":
+                return _jst_day_range_utc(today)
+            if key == "week-1":
+                return (_jst_day_range_utc(today - timedelta(days=7))[0],
+                        _jst_day_range_utc(today - timedelta(days=1))[1])
+            if key == "month-2":
+                return _months_back(today, 2)
+            if key == "month-1":
+                return _months_back(today, 1)
+            if key == "year-2":
+                return _year_range(today.year - 2)
+            if key == "year-1":
+                return _year_range(today.year - 1)
+    except (ValueError, OverflowError):
+        return None
+    return None
+
+
 def _extract_date(text):
-    """Read a date out of the user's words (JST) and return a UTC
-    (start, end) datetime pair, or None. Recognizes explicit
+    """Read a date out of the user's words (in the user's timezone) and
+    return a UTC (start, end) datetime pair, or None. Recognizes explicit
     YYYY-MM-DD / YYYY/MM/DD / M/D dates (language neutral), Japanese
-    month/day forms, and Japanese relative words (today, yesterday,
-    N days/weeks/months/years ago, last week/month, ...)."""
+    month/day forms, and Japanese and English relative words (today,
+    yesterday, N days/weeks/months/years ago, last week/month, ...)."""
     if not text:
         return None
     s = str(text)
-    today = datetime.now(_JST).date()
+    today = _today()
 
     m = _RE_DATE_YMD.search(s)
     if m:
@@ -400,6 +546,10 @@ def _extract_date(text):
     if "去年" in s:
         return _year_range(today.year - 1)
 
+    r = _extract_date_en(s, today)
+    if r is not None:
+        return r
+
     m = _RE_DATE_MD.search(s)
     if m:
         try:
@@ -411,7 +561,7 @@ def _extract_date(text):
     return None
 
 
-# Named time-of-day windows (JST). End is exclusive.
+# Named time-of-day windows (user's timezone). End is exclusive.
 _TIME_WORDS = [
     ("深夜", (0, 5)),
     ("早朝", (4, 7)),
@@ -435,9 +585,63 @@ _TIME_WORDS = [
 _TIME_FALSE_FRIENDS = re.compile(
     r"(夕食|夕飯|夕張|朝食|朝飯|朝礼|昼食|昼飯|夜食|夜勤|徹夜|一昼夜)")
 
+# English time-of-day words (checked longest first; end is exclusive).
+_EN_TIME_WORDS = [
+    ("late at night", (22, 24)),
+    ("late night", (22, 24)),
+    ("early morning", (4, 7)),
+    ("morning", (5, 11)),
+    ("midday", (11, 14)),
+    ("lunchtime", (11, 14)),
+    ("noon", (11, 13)),
+    ("afternoon", (12, 18)),
+    ("evening", (17, 21)),
+    ("tonight", (18, 24)),
+    ("night", (18, 24)),
+]
+_EN_TIME_FALSE_FRIENDS = re.compile(
+    r"\bgood\s*(?:morning|afternoon|evening|night)\b|\bgoodnight\b|\bovernight\b", re.I)
+_RE_EN_CLOCK = re.compile(
+    r"\b(?:(around|about|at)\s+)?(\d{1,2})(?::\d{2})?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])", re.I)
+
+
+def _extract_time_range_en(s):
+    """The English half of _extract_time_range: (start_hour, end_hour)
+    in the user's timezone, or None."""
+    s = _EN_TIME_FALSE_FRIENDS.sub(" ", s)
+    m = _RE_EN_CLOCK.search(s)
+    if m:
+        h = int(m.group(2))
+        if 1 <= h <= 12:
+            h = (h % 12) + (12 if m.group(3).lower().startswith("p") else 0)
+            if m.group(1) and m.group(1).lower() in ("around", "about"):
+                return (max(0, h - 1), min(24, h + 2))
+            return (h, min(24, h + 1))
+    for word, rng in sorted(_EN_TIME_WORDS, key=lambda x: len(x[0]), reverse=True):
+        if re.search(r"\b" + word.replace(" ", r"\s+") + r"\b", s, re.I):
+            return rng
+    return None
+
+
+def _mask_en_time(text, time_read):
+    """Blank out the English date phrases (and, if a time of day was
+    read, the time-of-day phrases) so "yesterday" or "3 days ago" is
+    not also searched for as a keyword. Mirrors how _split_time_query
+    blanks the Japanese words."""
+    s = str(text or "")
+    for rx in (_RE_EN_MD, _RE_EN_DM, _RE_EN_MONTH_ONLY, _RE_EN_AGO):
+        s = rx.sub(" ", s)
+    for rx, _key in _EN_REL:
+        s = rx.sub(" ", s)
+    if time_read:
+        s = _RE_EN_CLOCK.sub(" ", s)
+        for word, _rng in sorted(_EN_TIME_WORDS, key=lambda x: len(x[0]), reverse=True):
+            s = re.sub(r"\b" + word.replace(" ", r"\s+") + r"\b", " ", s, flags=re.I)
+    return s
+
 
 def _extract_time_range(text):
-    """Read a time-of-day out of the user's words (JST) and return
+    """Read a time-of-day out of the user's words (user's timezone) and return
     (start_hour, end_hour), or None."""
     if not text:
         return None
@@ -456,6 +660,9 @@ def _extract_time_range(text):
     for word, rng in sorted(_TIME_WORDS, key=lambda x: len(x[0]), reverse=True):
         if word in s:
             return rng
+    r = _extract_time_range_en(s)
+    if r is not None:
+        return r
     return None
 
 
@@ -473,7 +680,7 @@ def _in_time_range(ts_dt, time_jst):
         return True
     if ts_dt is None:
         return False
-    h = ts_dt.astimezone(_JST).hour
+    h = ts_dt.astimezone(_tz()).hour
     start, end = time_jst
     return start <= h < end
 
@@ -628,7 +835,7 @@ def _fetch_rows(con, match_query, actor, hard_limit):
 
 
 def _apply_time_filters(rows, date_range, time_jst):
-    """Filter rows by date and/or time-of-day (JST). Whichever filter
+    """Filter rows by date and/or time-of-day (user's timezone). Whichever filter
     is None passes everything through."""
     if date_range is None and time_jst is None:
         return rows
@@ -675,7 +882,7 @@ def search(keyword, actor=None, limit=5):
     try:
         date_range = _extract_date(keyword)        # read from the raw text, before stripping
         time_jst = _extract_time_range(keyword)
-        cleaned = _strip_query(keyword)             # strip filler words
+        cleaned = _strip_query(_mask_en_time(keyword, time_jst is not None))  # strip time words and filler words
         keywords = _extract_keywords(cleaned)
 
         # date/time filters can remove rows, so over-fetch before trimming to limit
@@ -713,7 +920,7 @@ def search_with_context(keyword, actor=None, hits=2, around=1, day_limit=40):
     try:
         date_range = _extract_date(keyword)
         time_jst = _extract_time_range(keyword)
-        cleaned = _strip_query(keyword)
+        cleaned = _strip_query(_mask_en_time(keyword, time_jst is not None))
         keywords = _extract_keywords(cleaned)
 
         # Date mode with no other keywords ("what did we talk about on
@@ -784,7 +991,7 @@ def _split_time_query(query):
     a search term.
 
     - date_range: from _extract_date (UTC start/end pair) or None
-    - time_jst:   from _extract_time_range (JST hour range) or None
+    - time_jst:   from _extract_time_range (hour range, user's timezone) or None
     - keywords:   the remaining search terms with all time words
                   removed (max 5, per _extract_keywords)
     """
@@ -811,6 +1018,7 @@ def _split_time_query(query):
             masked = masked.replace(word, " ")
         for tok, w in prot.items():
             masked = masked.replace(tok, w)
+    masked = _mask_en_time(masked, time_jst is not None)
     keywords = _extract_keywords(_strip_query(masked)) if masked.strip() else []
     # A temporal modifier ("the first time", "back then") means "which
     # occurrence", not "which date" -- widen date_range to everything.
@@ -825,7 +1033,7 @@ def _split_time_query(query):
 
 def _latest_day_with_hours(time_jst):
     """When only a time-of-day was given (no date), find the most
-    recent JST day that has rows in that window and return its
+    recent day (user's timezone) that has rows in that window and return its
     (start, end) in UTC. None if nothing matches."""
     if not os.path.exists(_index_db()):
         build_index()
@@ -834,7 +1042,7 @@ def _latest_day_with_hours(time_jst):
         for (ts,) in con.execute("SELECT ts FROM recall WHERE type != 'meta' ORDER BY ts DESC"):
             t = _parse_ts(ts)
             if t is not None and _in_time_range(t, time_jst):
-                return _jst_day_range_utc(t.astimezone(_JST).date())
+                return _jst_day_range_utc(t.astimezone(_tz()).date())
         return None
     finally:
         con.close()
@@ -860,7 +1068,7 @@ def search_time(date_range, time_jst, keywords, actor=None,
     if date_range is None and time_jst is not None:
         date_range = _latest_day_with_hours(time_jst)
         if date_range is not None:
-            fallback_day = date_range[0].astimezone(_JST).strftime("%Y-%m-%d")
+            fallback_day = date_range[0].astimezone(_tz()).strftime("%Y-%m-%d")
     if date_range is None:
         return [], {"total": 0, "kw_total": None, "days": {}, "types": {},
                      "level": None, "fallback_day": fallback_day}
@@ -890,7 +1098,7 @@ def search_time(date_range, time_jst, keywords, actor=None,
             for r in rows:
                 t = _parse_ts(r.get("ts"))
                 if t is not None:
-                    k = t.astimezone(_JST).strftime("%m-%d")
+                    k = t.astimezone(_tz()).strftime("%m-%d")
                     d[k] = d.get(k, 0) + 1
             return d
 
@@ -914,7 +1122,7 @@ def search_time(date_range, time_jst, keywords, actor=None,
         # range can drop a real match that just didn't rank highly
         # globally; the in-range set is small enough to scan directly.
         cand = [r for r in in_range
-                if all(k in (r.get("text") or "") for k in keywords)]
+                if all(k.lower() in (r.get("text") or "").lower() for k in keywords)]
         level = "L1"
         if len(cand) < 2:
             cand = list(in_range)
@@ -968,7 +1176,7 @@ if __name__ == "__main__":
         print(f"search '{kw}' -> {len(hits)} hit(s)")
 
     print("\n--- date-scoped search demo ---")
-    for kw in ("昨日のログ", "今日の話"):
+    for kw in ("昨日のログ", "今日の話", "yesterday's log", "what we said today"):
         hits = search(kw, limit=3)
         print(f"search '{kw}' -> {len(hits)} hit(s)")
 

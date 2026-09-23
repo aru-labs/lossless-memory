@@ -1,5 +1,6 @@
 {
   "_comment": "Copy this file to config.json in your working directory and edit it. Every path and name the code needs comes through here -- nothing is hardcoded in the modules themselves. Missing or broken config.json falls back to generic built-in defaults.",
+  "_timezone": "An IANA timezone name such as \"America/New_York\" or \"Asia/Tokyo\". Day boundaries and words like \"yesterday\" follow it. null = this machine's local time (set it explicitly if you have daylight saving time).",
 
   "user_name": "YOUR_NAME",
   "ai_name": "AI_NAME",
@@ -8,6 +9,7 @@
   "data_dir": "./logs",
   "raw_log_dir": "./raw",
   "ingest_format": "plain",
+  "timezone": null,
 
   "wake_word": "good morning",
   "bridge_minutes": 30,

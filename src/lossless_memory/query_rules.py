@@ -67,6 +67,8 @@ _TEMPORAL_MODIFIERS_BUILTIN = [
     "いつだったか", "いつだっけ",
     "前回", "前々回", "次回",
     "以前", "以前は",
+    "the first time", "first time", "the last time", "last time",
+    "back then", "that time", "at the time", "previously",
 ]
 
 _TRIGGERS_FILE = "recall_triggers.json"
@@ -90,7 +92,8 @@ def has_temporal_modifier(text):
     try:
         if not text:
             return False
-        return any(marker in text for marker in _temporal_modifiers())
+        low = text.lower()
+        return any(marker in text or marker.lower() in low for marker in _temporal_modifiers())
     except Exception:
         return False
 

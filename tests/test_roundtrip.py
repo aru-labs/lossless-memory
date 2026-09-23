@@ -32,6 +32,7 @@ def workspace(tmp_path, monkeypatch):
         "data_dir": "./logs",
         "raw_log_dir": str(raw_dir),
         "ingest_format": "plain",
+        "timezone": "Asia/Tokyo",
     }
     (tmp_path / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
 

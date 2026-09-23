@@ -43,7 +43,7 @@ import io
 import os
 import re
 
-from .config import config, data_dir
+from .config import config, data_dir, user_tz
 
 TAIL_BYTES = 8 * 1024 * 1024  # only the tail is read; a full re-read on every call doesn't scale
 
@@ -90,8 +90,10 @@ def _read_tail(path):
 
 
 def _jst(ts):
-    d = datetime.datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S")
-    return d + datetime.timedelta(hours=9)
+    """A transcript timestamp (UTC) as a naive datetime in the user's
+    timezone (config "timezone"; the name is historical)."""
+    d = datetime.datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+    return d.astimezone(user_tz()).replace(tzinfo=None)
 
 
 def _asr_fix(text):
@@ -246,10 +248,8 @@ def _origin_times():
                         continue
                     try:
                         u = datetime.datetime.strptime(part[0][:19], "%Y-%m-%dT%H:%M:%S")
-                        # local-time offset without the deprecated utcnow()
-                        _now = datetime.datetime.now()
-                        _utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-                        out.append(u + (_now - _utc))
+                        u = u.replace(tzinfo=datetime.timezone.utc)
+                        out.append(u.astimezone(user_tz()).replace(tzinfo=None))
                     except Exception:
                         continue
         except Exception:
@@ -401,7 +401,7 @@ def _done_words():
 def _topics_events():
     """Manual topic markers from topic.py (data_dir/topics.jsonl) as
     (jst_datetime, "* topic"), or [] if the file doesn't exist. ts is
-    stored as local time already."""
+    stored in the user's timezone already (see topic.py)."""
     p = os.path.join(data_dir(), "topics.jsonl")
     out = []
     try:
@@ -439,7 +439,7 @@ def render_today_index(transcript_path=None, cap=40):
         ev.sort(key=lambda x: x[0])
         if not ev:
             return []
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(user_tz()).replace(tzinfo=None)
         seg = [(t, h) for t, h in ev if (now - t).total_seconds() <= 4 * 3600]
         if not seg:
             seg = ev[-3:]

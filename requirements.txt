@@ -1,2 +1,3 @@
 sqlite-vec
 sentence-transformers
+tzdata; sys_platform == "win32"

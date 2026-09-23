@@ -13,6 +13,7 @@ authors = [{ name = "Aru" }, { name = "Cece" }]
 dependencies = [
     "sqlite-vec",
     "sentence-transformers",
+    "tzdata; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
